@@ -7,11 +7,13 @@ failed_videos.json.
 """
 
 import argparse
+import datetime
 import json
 import os
 import random
 import sys
 import time
+from requests.exceptions import ConnectionError, Timeout
 
 from requests import Session
 from youtube_transcript_api import (
@@ -24,8 +26,29 @@ from youtube_transcript_api import (
 LANGUAGES = ["en", "en-US", "en-GB"]
 MIN_DELAY = 60
 MAX_DELAY = 120
+MAX_RETRIES = 3
+RETRY_BACKOFF = 2
 
 RAW_COOKIE_STRING = ""
+
+
+def fetch_transcript_with_retry(api, video_id):
+    """Fetch transcript with exponential backoff retry for transient errors."""
+    last_exception = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            return fetch_transcript_text(api, video_id)
+        except (ConnectionError, Timeout) as exc:
+            last_exception = exc
+            if attempt < MAX_RETRIES - 1:
+                wait_time = RETRY_BACKOFF ** attempt
+                print(f"    Retry {attempt + 1}/{MAX_RETRIES - 1} after {wait_time}s...", end=" ", flush=True)
+                time.sleep(wait_time)
+            else:
+                print()
+        except Exception:
+            raise
+    raise last_exception
 
 
 def parse_cookie_string(raw_cookie):
@@ -139,10 +162,11 @@ def main():
             continue
 
         try:
-            text = fetch_transcript_text(api, video_id)
+            text = fetch_transcript_with_retry(api, video_id)
             save_transcript(transcripts_dir, video_id, text)
             succeeded += 1
-            print(f"  [{index}/{total}] {video_id} - transcript saved.")
+            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+            print(f"  [{index}/{total}] {video_id} - transcript saved. [{timestamp}]")
         except (
             TranscriptsDisabled,
             NoTranscriptFound,

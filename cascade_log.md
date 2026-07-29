@@ -8,3 +8,7 @@
 - **Update cookie & simplify format** — Replaced multi-line cookie constant with a single-line string for easy paste-and-replace.
 - **Multi-channel support** — Renamed `transcripts/` to `transcripts_starterstory/`, refactored `scraper.py` and `downloader.py` to accept a channel handle as a CLI argument, and store all per-channel data under `channels/<channel>/`.
 - **Consolidate legacy files** — Moved `channel_videos.json`, `failed_videos.json`, and `transcripts_starterstory/` into `channels/starterstory/` and cleaned up `.gitignore`.
+- **Create batch processing script** — Added `process_all_channels.sh` to iterate through all channel directories, run scraper.py and downloader.py for each, with error handling and progress reporting.
+- **Add delay between actions** — Added 5-second sleep after each scraper and downloader call in process_all_channels.sh.
+- **Add timestamp to downloader output** — Added hh:mm:ss timestamp to transcript saved message in downloader.py for better progress tracking.
+- **Implement retry mechanism for transient network errors** — Added exponential backoff retry (max 3 attempts, 2s backoff) for `ConnectionError` and `Timeout` exceptions in downloader.py to recover from transient YouTube API disconnections.
